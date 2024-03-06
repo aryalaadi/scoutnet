@@ -1,0 +1,15 @@
+=====================================================
+socutnet: port scanning utility for UNIX-like systems
+=====================================================
+
+A simple port scanning utility for UNIX-like systems 
+
+building:
+	$ cargo build --release
+
+installing:
+	$ BIN=~/.local/bin
+	$ cp ./target/release/scoutnet $BIN/scoutnet
+
+usage: 
+	$ scoutnet $(resolveip -s localhost) 1 8192
