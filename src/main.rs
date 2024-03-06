@@ -1,5 +1,5 @@
 /*
-    scountnet: port scanning utility for UNIX-like systems
+    scoutnet: port scanning utility for UNIX-like systems
     Copyright (C) 2023 aryalaadi123 @ gmail.com
 
     This program is free software: you can redistribute it and/or modify
@@ -19,7 +19,17 @@
 
 use std::net::TcpStream;
 use std::net::ToSocketAddrs;
+use std::thread;
 use std::time::Duration;
+
+fn scan_port(addr: String, port: i32) {
+		thread::spawn(move || {
+			let current_addr = format!("{}:{}", addr, port.to_string().to_owned());
+			if let Ok(stream) = TcpStream::connect_timeout(&current_addr.to_socket_addrs().unwrap().next().unwrap(), Duration::new(1, 0)) {
+				println!("{}\topen\t{}", port, "TODO");
+			}
+		});
+}
 
 fn main() {
 	let mut args = std::env::args();
@@ -36,9 +46,6 @@ fn main() {
 
 	println!("PORT\tSTATE\tSERVICE");
 	for i in port_scan_start..port_scan_end {
-		let current_addr = format!("{}:{}", addr, i.to_string());
-		if let Ok(stream) = TcpStream::connect_timeout(&current_addr.to_socket_addrs().unwrap().next().unwrap(), Duration::new(5, 0)) {
-			println!("{}\topen\t{}", i, "TODO");
-		}
+		scan_port(addr.clone(), i);
 	}
 }
