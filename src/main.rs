@@ -20,8 +20,11 @@ use std::net::TcpStream;
 use std::net::ToSocketAddrs;
 use std::thread;
 use std::time::Duration;
+use std::sync::atomic::{AtomicUsize, Ordering, ATOMIC_USIZE_INIT};
 
 use clap::Parser;
+
+static GLOBAL_THREAD_COUNT: AtomicUsize = ATOMIC_USIZE_INIT;
 
 #[derive(Parser)]
 #[command(author, version, about, long_about = None)]
@@ -39,30 +42,32 @@ struct Args {
 }
 
 fn scan_port(addr: String, port: i32, verbose: bool) {
-		thread::spawn(move || {
-			let current_addr = format!("{}:{}", addr, port.to_string().to_owned());
-			if let Ok(stream) = TcpStream::connect_timeout(&current_addr
-														   .to_socket_addrs()
-														   .unwrap()
-														   .next()
-														   .unwrap(), Duration::new(4, 0)){
-				println!("{}\topen\t{}", port, "TODO");
+	GLOBAL_THREAD_COUNT.fetch_add(1, Ordering::SeqCst);
+	thread::spawn(move || {
+		let current_addr = format!("{}:{}", addr, port.to_string().to_owned());
+		if let Ok(_stream) = TcpStream::connect_timeout(&current_addr
+													   .to_socket_addrs()
+													   .unwrap()
+													   .next()
+													   .unwrap(), Duration::new(1, 0)){
+			println!("{}\topen\t{}", port, "TODO");
+		}
+		else {
+			if verbose {
+				println!("{}\tclose\t{}", port, "TODO");
 			}
-			else {
-				if verbose {
-					println!("{}\tclose\t{}", port, "TODO");
-				}
-			}
-		});
+		}
+		GLOBAL_THREAD_COUNT.fetch_sub(1, Ordering::SeqCst);
+	});
 }
 
 fn scan_port_wait(addr: String, port: i32, verbose:bool) {
 	let current_addr = format!("{}:{}", addr, port.to_string().to_owned());
-	if let Ok(stream) = TcpStream::connect_timeout(&current_addr
+	if let Ok(_stream) = TcpStream::connect_timeout(&current_addr
 												   .to_socket_addrs()
 												   .unwrap()
 												   .next()
-												   .unwrap(), Duration::new(4, 0)){
+												   .unwrap(), Duration::new(1, 0)){
 		println!("{}\topen\t{}", port, "TODO");
 	}
 	else {
@@ -90,4 +95,8 @@ fn main() {
 			scan_port(addr.clone(), i, verbose);
 		}
 	}
+
+	while GLOBAL_THREAD_COUNT.load(Ordering::SeqCst) != 0 {
+		thread::sleep(Duration::from_millis(1)); 
+    }
 }
