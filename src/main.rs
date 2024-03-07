@@ -16,36 +16,78 @@
     along with this program.  If not, see <https://www.gnu.org/licenses/>.
 */
 
-
 use std::net::TcpStream;
 use std::net::ToSocketAddrs;
 use std::thread;
 use std::time::Duration;
 
-fn scan_port(addr: String, port: i32) {
+use clap::Parser;
+
+#[derive(Parser)]
+#[command(author, version, about, long_about = None)]
+struct Args {
+	#[arg(short, long, default_value = "0.0.0.0")]
+	ipaddr: String,
+	#[arg(short, long, default_value = "0")]
+	start_port: i32,
+	#[arg(short, long, default_value = "8000")]
+	end_port: i32,
+	#[arg(short, long)]
+    verbose: bool,
+	#[arg(short, long)]
+	multithreaded: bool,
+}
+
+fn scan_port(addr: String, port: i32, verbose: bool) {
 		thread::spawn(move || {
 			let current_addr = format!("{}:{}", addr, port.to_string().to_owned());
-			if let Ok(stream) = TcpStream::connect_timeout(&current_addr.to_socket_addrs().unwrap().next().unwrap(), Duration::new(1, 0)) {
+			if let Ok(stream) = TcpStream::connect_timeout(&current_addr
+														   .to_socket_addrs()
+														   .unwrap()
+														   .next()
+														   .unwrap(), Duration::new(4, 0)){
 				println!("{}\topen\t{}", port, "TODO");
+			}
+			else {
+				if verbose {
+					println!("{}\tclose\t{}", port, "TODO");
+				}
 			}
 		});
 }
 
-fn main() {
-	let mut args = std::env::args();
-
-	if args.len() != 4 {
-		println!("usage: \n\tscoutnet ip port_start port_end");
-		std::process::exit(127);
+fn scan_port_wait(addr: String, port: i32, verbose:bool) {
+	let current_addr = format!("{}:{}", addr, port.to_string().to_owned());
+	if let Ok(stream) = TcpStream::connect_timeout(&current_addr
+												   .to_socket_addrs()
+												   .unwrap()
+												   .next()
+												   .unwrap(), Duration::new(4, 0)){
+		println!("{}\topen\t{}", port, "TODO");
 	}
-	
-	args.next();
-	let addr = args.next().unwrap();
-	let port_scan_start = args.next().unwrap().parse::<i32>().unwrap();
-	let port_scan_end = args.next().unwrap().parse::<i32>().unwrap();
+	else {
+		if verbose {
+			println!("{}\tclose\t{}", port, "TODO");
+		}
+	}
+}
+fn main() {
+	let args = Args::parse();
 
+	let addr = args.ipaddr.clone();
+	let port_scan_start = args.start_port.clone();
+	let port_scan_end = args.end_port.clone();
+	let verbose = args.verbose;
+	let multithreaded_run = args.multithreaded;
+	
 	println!("PORT\tSTATE\tSERVICE");
-	for i in port_scan_start..port_scan_end {
-		scan_port(addr.clone(), i);
+	if !multithreaded_run {
+		for i in port_scan_start..port_scan_end {
+			scan_port_wait(addr.clone(), i, verbose);
+		}
+	} else {
+		for i in port_scan_start..port_scan_end {
+			scan_port(addr.clone(), i, verbose);
+		}
 	}
 }
