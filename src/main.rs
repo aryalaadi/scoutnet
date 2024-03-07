@@ -16,15 +16,19 @@
     along with this program.  If not, see <https://www.gnu.org/licenses/>.
 */
 
+use std::io::Read;
+use std::io::Write;
+
 use std::net::TcpStream;
 use std::net::ToSocketAddrs;
-use std::sync::atomic::{AtomicUsize, Ordering, ATOMIC_USIZE_INIT};
+
+use std::sync::atomic::{AtomicUsize, Ordering};
 use std::thread;
 use std::time::Duration;
 
 use clap::Parser;
 
-static GLOBAL_THREAD_COUNT: AtomicUsize = ATOMIC_USIZE_INIT;
+static GLOBAL_THREAD_COUNT: AtomicUsize = AtomicUsize::new(0);
 
 #[derive(Parser)]
 #[command(author, version, about, long_about = None)]
@@ -41,18 +45,33 @@ struct Args {
     multithreaded: bool,
 }
 
+fn check_service_on_stream(mut stream: TcpStream) -> String {
+    // check for HTTP
+    let mut buf = [0; 4];
+    stream.write("GET / HTTP/1.1\n\n".as_bytes()).unwrap();
+    let _ = stream.read_exact(&mut buf);
+    if String::from_utf8_lossy(&buf) == "HTTP" {
+        return "HTTP".to_string();
+    // check for SSH
+    } else if String::from_utf8_lossy(&buf) == "SSH-" {
+        return "SSH".to_string();
+    } else {
+        return "UNKNOWN".to_string();
+    }
+}
+
 fn scan_port(addr: String, port: i32, verbose: bool) {
     GLOBAL_THREAD_COUNT.fetch_add(1, Ordering::SeqCst);
     thread::spawn(move || {
         let current_addr = format!("{}:{}", addr, port.to_string().to_owned());
-        if let Ok(_stream) = TcpStream::connect_timeout(
+        if let Ok(stream) = TcpStream::connect_timeout(
             &current_addr.to_socket_addrs().unwrap().next().unwrap(),
             Duration::new(1, 0),
         ) {
-            println!("{}\topen\t{}", port, "TODO");
+            println!("{}\topen\t{}", port, check_service_on_stream(stream));
         } else {
             if verbose {
-                println!("{}\tclose\t{}", port, "TODO");
+                println!("{}\tclosed\t{}", port, "none");
             }
         }
         GLOBAL_THREAD_COUNT.fetch_sub(1, Ordering::SeqCst);
@@ -61,14 +80,14 @@ fn scan_port(addr: String, port: i32, verbose: bool) {
 
 fn scan_port_wait(addr: String, port: i32, verbose: bool) {
     let current_addr = format!("{}:{}", addr, port.to_string().to_owned());
-    if let Ok(_stream) = TcpStream::connect_timeout(
-		&current_addr.to_socket_addrs().unwrap().next().unwrap(),
+    if let Ok(stream) = TcpStream::connect_timeout(
+        &current_addr.to_socket_addrs().unwrap().next().unwrap(),
         Duration::new(1, 0),
     ) {
-        println!("{}\topen\t{}", port, "TODO");
+        println!("{}\topen\t{}", port, check_service_on_stream(stream));
     } else {
         if verbose {
-            println!("{}\tclose\t{}", port, "TODO");
+            println!("{}\tclosed\t{}", port, "none");
         }
     }
 }
