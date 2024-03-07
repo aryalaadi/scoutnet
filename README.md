@@ -1,5 +1,4 @@
-# scoutnet: port scanning utility for UNIX-like systems
-
+# Scoutnet
 A simple port scanning utility for UNIX-like systems 
 
 ## building:

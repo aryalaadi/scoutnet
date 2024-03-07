@@ -1,0 +1,26 @@
+.TH SCOUTNET "1" "March 2024" "scoutnet 0.1.0" "User Commands"
+.SH NAME
+scoutnet \- manual page for scoutnet 0.1.0
+.SH SYNOPSIS
+.B scoutnet
+[\fI\,OPTIONS\/\fR]
+.SH OPTIONS
+.TP
+\fB\-i\fR, \fB\-\-ipaddr\fR <IPADDR>
+[default: 0.0.0.0]
+.TP
+\fB\-s\fR, \fB\-\-start\-port\fR <START_PORT>
+[default: 0]
+.TP
+\fB\-e\fR, \fB\-\-end\-port\fR <END_PORT>
+[default: 8000]
+.HP
+\fB\-v\fR, \fB\-\-verbose\fR
+.HP
+\fB\-m\fR, \fB\-\-multithreaded\fR
+.TP
+\fB\-h\fR, \fB\-\-help\fR
+Print help
+.TP
+\fB\-V\fR, \fB\-\-version\fR
+Print version
