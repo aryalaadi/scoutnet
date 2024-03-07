@@ -18,9 +18,9 @@
 
 use std::net::TcpStream;
 use std::net::ToSocketAddrs;
+use std::sync::atomic::{AtomicUsize, Ordering, ATOMIC_USIZE_INIT};
 use std::thread;
 use std::time::Duration;
-use std::sync::atomic::{AtomicUsize, Ordering, ATOMIC_USIZE_INIT};
 
 use clap::Parser;
 
@@ -29,74 +29,70 @@ static GLOBAL_THREAD_COUNT: AtomicUsize = ATOMIC_USIZE_INIT;
 #[derive(Parser)]
 #[command(author, version, about, long_about = None)]
 struct Args {
-	#[arg(short, long, default_value = "0.0.0.0")]
-	ipaddr: String,
-	#[arg(short, long, default_value = "0")]
-	start_port: i32,
-	#[arg(short, long, default_value = "8000")]
-	end_port: i32,
-	#[arg(short, long)]
+    #[arg(short, long, default_value = "0.0.0.0")]
+    ipaddr: String,
+    #[arg(short, long, default_value = "0")]
+    start_port: i32,
+    #[arg(short, long, default_value = "8000")]
+    end_port: i32,
+    #[arg(short, long)]
     verbose: bool,
-	#[arg(short, long)]
-	multithreaded: bool,
+    #[arg(short, long)]
+    multithreaded: bool,
 }
 
 fn scan_port(addr: String, port: i32, verbose: bool) {
-	GLOBAL_THREAD_COUNT.fetch_add(1, Ordering::SeqCst);
-	thread::spawn(move || {
-		let current_addr = format!("{}:{}", addr, port.to_string().to_owned());
-		if let Ok(_stream) = TcpStream::connect_timeout(&current_addr
-													   .to_socket_addrs()
-													   .unwrap()
-													   .next()
-													   .unwrap(), Duration::new(1, 0)){
-			println!("{}\topen\t{}", port, "TODO");
-		}
-		else {
-			if verbose {
-				println!("{}\tclose\t{}", port, "TODO");
-			}
-		}
-		GLOBAL_THREAD_COUNT.fetch_sub(1, Ordering::SeqCst);
-	});
+    GLOBAL_THREAD_COUNT.fetch_add(1, Ordering::SeqCst);
+    thread::spawn(move || {
+        let current_addr = format!("{}:{}", addr, port.to_string().to_owned());
+        if let Ok(_stream) = TcpStream::connect_timeout(
+            &current_addr.to_socket_addrs().unwrap().next().unwrap(),
+            Duration::new(1, 0),
+        ) {
+            println!("{}\topen\t{}", port, "TODO");
+        } else {
+            if verbose {
+                println!("{}\tclose\t{}", port, "TODO");
+            }
+        }
+        GLOBAL_THREAD_COUNT.fetch_sub(1, Ordering::SeqCst);
+    });
 }
 
-fn scan_port_wait(addr: String, port: i32, verbose:bool) {
-	let current_addr = format!("{}:{}", addr, port.to_string().to_owned());
-	if let Ok(_stream) = TcpStream::connect_timeout(&current_addr
-												   .to_socket_addrs()
-												   .unwrap()
-												   .next()
-												   .unwrap(), Duration::new(1, 0)){
-		println!("{}\topen\t{}", port, "TODO");
-	}
-	else {
-		if verbose {
-			println!("{}\tclose\t{}", port, "TODO");
-		}
-	}
+fn scan_port_wait(addr: String, port: i32, verbose: bool) {
+    let current_addr = format!("{}:{}", addr, port.to_string().to_owned());
+    if let Ok(_stream) = TcpStream::connect_timeout(
+		&current_addr.to_socket_addrs().unwrap().next().unwrap(),
+        Duration::new(1, 0),
+    ) {
+        println!("{}\topen\t{}", port, "TODO");
+    } else {
+        if verbose {
+            println!("{}\tclose\t{}", port, "TODO");
+        }
+    }
 }
 fn main() {
-	let args = Args::parse();
+    let args = Args::parse();
 
-	let addr = args.ipaddr.clone();
-	let port_scan_start = args.start_port.clone();
-	let port_scan_end = args.end_port.clone();
-	let verbose = args.verbose;
-	let multithreaded_run = args.multithreaded;
-	
-	println!("PORT\tSTATE\tSERVICE");
-	if !multithreaded_run {
-		for i in port_scan_start..port_scan_end {
-			scan_port_wait(addr.clone(), i, verbose);
-		}
-	} else {
-		for i in port_scan_start..port_scan_end {
-			scan_port(addr.clone(), i, verbose);
-		}
-	}
+    let addr = args.ipaddr.clone();
+    let port_scan_start = args.start_port.clone();
+    let port_scan_end = args.end_port.clone();
+    let verbose = args.verbose;
+    let multithreaded_run = args.multithreaded;
 
-	while GLOBAL_THREAD_COUNT.load(Ordering::SeqCst) != 0 {
-		thread::sleep(Duration::from_millis(1)); 
+    println!("PORT\tSTATE\tSERVICE");
+    if !multithreaded_run {
+        for i in port_scan_start..port_scan_end {
+            scan_port_wait(addr.clone(), i, verbose);
+        }
+    } else {
+        for i in port_scan_start..port_scan_end {
+            scan_port(addr.clone(), i, verbose);
+        }
+    }
+
+    while GLOBAL_THREAD_COUNT.load(Ordering::SeqCst) != 0 {
+        thread::sleep(Duration::from_millis(1));
     }
 }
