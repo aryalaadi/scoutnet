@@ -16,12 +16,6 @@
     along with this program.  If not, see <https://www.gnu.org/licenses/>.
 */
 
-use std::io::Read;
-use std::io::Write;
-
-use std::net::TcpStream;
-use std::net::ToSocketAddrs;
-
 use std::sync::atomic::{AtomicUsize, Ordering};
 use std::thread;
 use std::time::Duration;
@@ -45,52 +39,22 @@ struct Args {
     multithreaded: bool,
 }
 
-fn check_service_on_stream(mut stream: TcpStream) -> String {
-    // check for HTTP
-    let mut buf = [0; 4];
-    stream.write("GET / HTTP/1.1\n\n".as_bytes()).unwrap();
-    let _ = stream.read_exact(&mut buf);
-    if String::from_utf8_lossy(&buf) == "HTTP" {
-        return "HTTP".to_string();
-    // check for SSH
-    } else if String::from_utf8_lossy(&buf) == "SSH-" {
-        return "SSH".to_string();
-    } else {
-        return "UNKNOWN".to_string();
-    }
-}
-
-fn scan_port(addr: String, port: i32, verbose: bool) {
+use libscoutnet::scoutnet::scan_port;
+fn scan_port_mt(addr: String, port: i32, verbose: bool) {
     GLOBAL_THREAD_COUNT.fetch_add(1, Ordering::SeqCst);
     thread::spawn(move || {
-        let current_addr = format!("{}:{}", addr, port.to_string().to_owned());
-        if let Ok(stream) = TcpStream::connect_timeout(
-            &current_addr.to_socket_addrs().unwrap().next().unwrap(),
-            Duration::new(1, 0),
-        ) {
-            println!("{}\topen\t{}", port, check_service_on_stream(stream));
+        let (serv, status) = scan_port(addr, port, verbose);
+        if status {
+            println!("{}\tOPEN\t{}", port, serv);
         } else {
             if verbose {
-                println!("{}\tclosed\t{}", port, "none");
+                println!("{}\tCLOSED\t", port);
             }
         }
         GLOBAL_THREAD_COUNT.fetch_sub(1, Ordering::SeqCst);
     });
 }
 
-fn scan_port_wait(addr: String, port: i32, verbose: bool) {
-    let current_addr = format!("{}:{}", addr, port.to_string().to_owned());
-    if let Ok(stream) = TcpStream::connect_timeout(
-        &current_addr.to_socket_addrs().unwrap().next().unwrap(),
-        Duration::new(1, 0),
-    ) {
-        println!("{}\topen\t{}", port, check_service_on_stream(stream));
-    } else {
-        if verbose {
-            println!("{}\tclosed\t{}", port, "none");
-        }
-    }
-}
 fn main() {
     let args = Args::parse();
 
@@ -103,11 +67,18 @@ fn main() {
     println!("PORT\tSTATE\tSERVICE");
     if !multithreaded_run {
         for i in port_scan_start..port_scan_end {
-            scan_port_wait(addr.clone(), i, verbose);
+            let (serv, status) = scan_port(addr.clone(), i, verbose);
+            if status {
+                println!("{}\tOPEN\t{}", i, serv);
+            } else {
+                if verbose {
+                    println!("{}\tCLOSED\t", i);
+                }
+            }
         }
     } else {
         for i in port_scan_start..port_scan_end {
-            scan_port(addr.clone(), i, verbose);
+            scan_port_mt(addr.clone(), i, verbose);
         }
     }
 
