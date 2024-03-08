@@ -1,17 +1,9 @@
+workspace = { members = ["libscoutnet", "scoutnetpy"] }
 [package]
 name = "scoutnet"
 version = "0.1.0"
 edition = "2021"
 
-# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
-
-[lib]
-name = "libscoutnet"
-path = "src/lib.rs"
-
-[[bin]]
-name = "scoutnet"
-path = "src/bin/main.rs"
-
 [dependencies]
 clap = { version = "*", features = ["derive"]}
+libscoutnet = { path = "./libscoutnet/"}

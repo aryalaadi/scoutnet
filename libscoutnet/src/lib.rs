@@ -10,6 +10,7 @@ pub struct cscoutnet_res {
     pub status: c_int,
 }
 
+/* shall remain unused until rust abi is stable*/
 #[no_mangle]
 pub unsafe extern "C" fn c_scoutnet_scanport(
     addr: *mut c_char,

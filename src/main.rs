@@ -22,6 +22,9 @@ use std::time::Duration;
 
 use clap::Parser;
 
+extern crate libscoutnet;
+use libscoutnet::scoutnet::scan_port;
+
 static GLOBAL_THREAD_COUNT: AtomicUsize = AtomicUsize::new(0);
 
 #[derive(Parser)]
@@ -39,7 +42,6 @@ struct Args {
     multithreaded: bool,
 }
 
-use libscoutnet::scoutnet::scan_port;
 fn scan_port_mt(addr: String, port: i32, verbose: bool) {
     GLOBAL_THREAD_COUNT.fetch_add(1, Ordering::SeqCst);
     thread::spawn(move || {
